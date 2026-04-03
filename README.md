@@ -49,8 +49,11 @@ Puppeteer is proposed for **automatic rigging and animation of 3D objects**. Giv
 - Aug 15, 2025: Release [paper](https://arxiv.org/abs/2508.10898) of Puppeteer!
 
 
-## 🔧 Installtation
-We use Python 3.10 with PyTorch 2.1.1 and CUDA 11.8. The environment and required packages can be installed as follows:
+## 🔧 Installation
+
+### Ampere and earlier (CUDA 11.8)
+
+Python 3.10 + PyTorch 2.1.1 + CUDA 11.8:
 
 ```
 git clone https://github.com/ByteDance-Seed/Puppeteer.git --recursive && cd Puppeteer
@@ -62,6 +65,24 @@ pip install flash-attn==2.6.3 --no-build-isolation
 pip install torch-scatter -f https://data.pyg.org/whl/torch-2.1.1+cu118.html
 pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py310_cu118_pyt211/download.html
 ```
+
+### Blackwell (CUDA 12.8, e.g. RTX 5090 D)
+
+Python 3.10 + PyTorch 2.6+ + CUDA 12.8. Flash Attention is replaced by PyTorch native SDPA (auto-dispatches FA4 backend on Blackwell), and `torch-scatter` is replaced by a built-in fallback:
+
+```
+git clone https://github.com/ByteDance-Seed/Puppeteer.git --recursive && cd Puppeteer
+conda create -n puppeteer python==3.10.13 -y
+conda activate puppeteer
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+pip install -r requirements.txt
+pip install "git+https://github.com/facebookresearch/pytorch3d.git"
+```
+
+> **Note:** `flash-attn` and `torch-scatter` are **not** needed for Blackwell. Optionally install `xformers` to accelerate Video-Depth-Anything in the animation module:
+> ```
+> pip install xformers --index-url https://download.pytorch.org/whl/cu128
+> ```
 
 ## 🚀 Demo
 
