@@ -1,8 +1,8 @@
 trimesh==4.2.3
-accelerate==0.28.0
+accelerate>=0.28.0
 mesh2sdf==1.1.0
-transformers==4.46.1
-numpy==1.26.4
+transformers>=4.46.1
+numpy>=1.26.4
 pyrender==0.1.45
 tqdm
 opencv-python==4.9.0.80
@@ -26,4 +26,3 @@ scikit-learn
 jsonargparse
 ptlflow
 imageio-ffmpeg==0.4.7
-xformers==0.0.23
