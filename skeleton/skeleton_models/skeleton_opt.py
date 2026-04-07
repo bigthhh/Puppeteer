@@ -285,6 +285,10 @@ class SkeletonOPTDecoder(OPTDecoder):
         use_cache = use_cache if use_cache is not None else self.config.use_cache
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        # transformers>=4.47 may pass DynamicCache/Cache instead of legacy tuple cache.
+        # Convert to legacy cache to keep downstream indexing logic unchanged.
+        if past_key_values is not None and hasattr(past_key_values, "to_legacy_cache"):
+            past_key_values = past_key_values.to_legacy_cache()
         # Transformer Decoder
         if input_ids is not None and inputs_embeds is not None: # when training
             pass
