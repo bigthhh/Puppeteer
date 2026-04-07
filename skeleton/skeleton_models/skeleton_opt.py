@@ -11,6 +11,7 @@
 
 from transformers import AutoModelForCausalLM, AutoConfig, OPTConfig
 from transformers.models.opt.modeling_opt import OPTForCausalLM, OPTModel, OPTDecoder, OPTLearnedPositionalEmbedding, OPTDecoderLayer
+from transformers.modeling_attn_mask_utils import _prepare_4d_causal_attention_mask
 from typing import List, Optional, Tuple, Union
 from transformers.modeling_outputs import (
     CausalLMOutputWithPast,
@@ -315,6 +316,7 @@ class SkeletonOPTDecoder(OPTDecoder):
 
         elif inputs_embeds is not None: # when generate first skeleton token
             assert not self.training
+            input_shape = inputs_embeds.shape[:-1]
             total_length = inputs_embeds.shape[1]
             cond_embed_query = torch.zeros((inputs_embeds.shape[0], total_length), device=inputs_embeds.device,
                                             dtype=inputs_embeds.dtype).long()
@@ -327,9 +329,14 @@ class SkeletonOPTDecoder(OPTDecoder):
         if self._use_flash_attention_2:
             # 2d mask is passed through the layers
             assert attention_mask is not None
-            causal_attention_mask = attention_mask if 0 in attention_mask else None
+            causal_attention_mask = attention_mask if (attention_mask == 0).any() else None
         else:
-            raise ValueError("Only flash_attention_2 is supported")
+            causal_attention_mask = _prepare_4d_causal_attention_mask(
+                attention_mask,
+                input_shape,
+                inputs_embeds,
+                past_key_values_length,
+            )
 
         pos_embeds = self.embed_positions(attention_mask, past_key_values_length)
 
