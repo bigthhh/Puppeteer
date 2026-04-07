@@ -1,12 +1,39 @@
 #!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 echo "Starting Puppeteer rigging pipeline..."
 
 mkdir -p results
 
+check_python_module() {
+    local module="$1"
+    python - <<PY
+import importlib.util
+import sys
+sys.exit(0 if importlib.util.find_spec("${module}") else 1)
+PY
+}
+
+echo "Checking required Python modules..."
+missing_modules=()
+for m in accelerate timm; do
+    if ! check_python_module "$m"; then
+        missing_modules+=("$m")
+    fi
+done
+
+if [ ${#missing_modules[@]} -ne 0 ]; then
+    echo "Missing Python modules: ${missing_modules[*]}"
+    echo "Please run: python -m pip install -r requirements.txt"
+    exit 1
+fi
+
 # skeleton
 echo "Running skeleton generation..."
-cd skeleton
+cd "$SCRIPT_DIR/skeleton"
 python demo.py \
     --input_dir ../examples \
     --pretrained_weights skeleton_ckpts/puppeteer_skeleton_w_diverse_pose.pth \
@@ -26,22 +53,22 @@ echo "Skeleton generation completed."
 
 # Copy generated rig files to skeletons for following skinning
 echo "Copying generated rig files..."
-mkdir -p ../results/skeletons/
-cd ../results/skel_results/
+mkdir -p "$SCRIPT_DIR/results/skeletons/"
+cd "$SCRIPT_DIR/results/skel_results/"
 for file in *_pred.txt; do
     if [ -f "$file" ]; then
         new_name=$(echo "$file" | sed 's/_pred\.txt$/.txt/')
         cp "$file" "../skeletons/$new_name"
     fi
 done
-cd ../../skeleton
+cd "$SCRIPT_DIR/skeleton"
 echo "Rig files copied to results/skeletons/"
 
 
 # skinning
 # Note that meshes with complex topology may require more data processing time.
 echo "Running skinning..."
-cd ../skinning
+cd "$SCRIPT_DIR/skinning"
 CUDA_VISIBLE_DEVICES=0 torchrun \
     --nproc_per_node=1 \
     --master_port=10009 \
@@ -56,13 +83,13 @@ echo "Skinning completed."
 
 
 echo "Copying generated skin files..."
-mkdir -p ../results/final_rigging/
-cd ../results/skin_results/generate/
+mkdir -p "$SCRIPT_DIR/results/final_rigging/"
+cd "$SCRIPT_DIR/results/skin_results/generate/"
 for file in *_skin.txt; do
     if [ -f "$file" ]; then
         new_name=$(echo "$file" | sed 's/_skin\.txt$/.txt/')
         cp "$file" "../../final_rigging/$new_name"
     fi
 done
-cd ../../../
+cd "$SCRIPT_DIR"
 echo "Final rig files copied to results/final_rigging/"
