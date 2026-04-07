@@ -300,7 +300,8 @@ class AnimationOptimizer:
         depth_module = DepthModule(
             encoder='vitl',
             device=self.device,
-            input_size=images_batch.shape[1],
+            # Cap Video-Depth-Anything input size to avoid OOM on high-res frame sequences.
+            input_size=min(images_batch.shape[1], 518),
             fp32=False
         )
         
