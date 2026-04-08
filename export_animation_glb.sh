@@ -79,7 +79,7 @@ mkdir -p "$(dirname "$OUT_GLB")"
   --root_pos_npy "$TMP_DIR/root_pos.npy" \
   --out_glb "$OUT_GLB" \
   --apply_root_motion "$APPLY_ROOT_MOTION" \
-  --root_correction_deg "$ROOT_CORRECTION_DEG"
+  --root_correction_deg="$ROOT_CORRECTION_DEG"
 
 if [ ! -f "$OUT_GLB" ]; then
   echo "GLB export failed: output file not found: $OUT_GLB"
