@@ -49,7 +49,7 @@ cd "$SCRIPT_DIR/animation"
 if [ -n "$SEQ_NAME" ]; then
   check_flow_ready "$SEQ_NAME"
   echo "Running optimization for: $SEQ_NAME (save_name: $SAVE_NAME)..."
-  shift 2 2>/dev/null || true
+  shift 1; [ "${1:-}" = "$SAVE_NAME" ] && shift 1 || true
   run_optimization "$SEQ_NAME" "$SAVE_NAME" "$@"
 else
   check_flow_ready "spiderman"
