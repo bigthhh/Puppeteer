@@ -97,16 +97,17 @@ def build_armature(joint_names, name_to_pos, parents, children):
     for name in joint_names:
         bone = arm_data.edit_bones.new(name)
         head = name_to_pos[name]
-        if children.get(name):
-            child_head = name_to_pos[children[name][0]]
-            tail = child_head
-            if np.linalg.norm(tail - head) < 1e-8:
-                tail = head + np.array([0.0, 0.0, tail_eps], dtype=np.float32)
-        else:
-            tail = head + np.array([0.0, 0.0, tail_eps], dtype=np.float32)
+        # IMPORTANT:
+        # The optimization code defines local rotations in a canonical joint frame
+        # (without per-bone rest-axis alignment to child direction). If we orient
+        # edit bones toward children here, Blender introduces different rest axes,
+        # which leads to severe deformation artifacts after applying quaternions.
+        # Use a uniform tiny tail offset to keep a consistent rest orientation.
+        tail = head + np.array([0.0, 0.0, tail_eps], dtype=np.float32)
 
         bone.head = tuple(float(v) for v in head)
         bone.tail = tuple(float(v) for v in tail)
+        bone.roll = 0.0
         created[name] = bone
 
     # Set hierarchy in edit mode.
