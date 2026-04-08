@@ -16,6 +16,7 @@ SAVE_NAME="${2:-}"
 OUT_GLB="${3:-}"
 MOTION_KIND="${MOTION_KIND:-raw}" # raw | smoothed
 APPLY_ROOT_MOTION="${APPLY_ROOT_MOTION:-1}"
+ROOT_CORRECTION_DEG="${ROOT_CORRECTION_DEG:-90,0,0}" # e.g. "90,0,0" for +90deg around X
 
 if [ -z "$SEQ_NAME" ] || [ -z "$SAVE_NAME" ] || [ -z "$OUT_GLB" ]; then
   echo "Usage: bash export_animation_glb.sh <seq_name> <save_name> <out_glb_path>"
@@ -77,7 +78,8 @@ mkdir -p "$(dirname "$OUT_GLB")"
   --root_quats_npy "$TMP_DIR/root_quats.npy" \
   --root_pos_npy "$TMP_DIR/root_pos.npy" \
   --out_glb "$OUT_GLB" \
-  --apply_root_motion "$APPLY_ROOT_MOTION"
+  --apply_root_motion "$APPLY_ROOT_MOTION" \
+  --root_correction_deg "$ROOT_CORRECTION_DEG"
 
 if [ ! -f "$OUT_GLB" ]; then
   echo "GLB export failed: output file not found: $OUT_GLB"

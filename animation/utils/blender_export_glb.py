@@ -144,6 +144,32 @@ def bind_weights(mesh_obj, arm_obj, joint_names, skinning):
     bpy.ops.object.parent_set(type="ARMATURE")
 
 
+def quat_multiply_wxyz(q1, q2):
+    w1, x1, y1, z1 = q1
+    w2, x2, y2, z2 = q2
+    return np.array(
+        [
+            w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+            w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+            w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+        ],
+        dtype=np.float32,
+    )
+
+
+def euler_deg_xyz_to_quat_wxyz(euler_deg_xyz):
+    ex, ey, ez = [np.deg2rad(float(v)) for v in euler_deg_xyz]
+    cx, sx = np.cos(ex * 0.5), np.sin(ex * 0.5)
+    cy, sy = np.cos(ey * 0.5), np.sin(ey * 0.5)
+    cz, sz = np.cos(ez * 0.5), np.sin(ez * 0.5)
+    qx = np.array([cx, sx, 0.0, 0.0], dtype=np.float32)
+    qy = np.array([cy, 0.0, sy, 0.0], dtype=np.float32)
+    qz = np.array([cz, 0.0, 0.0, sz], dtype=np.float32)
+    # XYZ intrinsic order
+    return quat_multiply_wxyz(quat_multiply_wxyz(qx, qy), qz)
+
+
 def compute_mesh_scale(mesh_obj):
     coords = np.array([mesh_obj.matrix_world @ v.co for v in mesh_obj.data.vertices], dtype=np.float32)
     if coords.size == 0:
@@ -161,6 +187,7 @@ def apply_animation(
     root_pos,
     apply_root_motion,
     root_pos_scale,
+    root_correction_deg,
 ):
     T, J, C = local_quats.shape
     if C != 4:
@@ -179,6 +206,8 @@ def apply_animation(
 
     arm_obj.rotation_mode = "QUATERNION"
 
+    q_corr = euler_deg_xyz_to_quat_wxyz(root_correction_deg)
+
     for t in range(T):
         frame = t + 1
         bpy.context.scene.frame_set(frame)
@@ -194,6 +223,7 @@ def apply_animation(
 
         if apply_root_motion:
             rq = root_quats[t]
+            rq = quat_multiply_wxyz(q_corr, rq)
             rp = root_pos[t] * root_pos_scale
             arm_obj.rotation_quaternion = (float(rq[0]), float(rq[1]), float(rq[2]), float(rq[3]))
             arm_obj.location = (float(rp[0]), float(rp[1]), float(rp[2]))
@@ -224,6 +254,7 @@ def parse_args():
     parser.add_argument("--root_pos_npy", required=True)
     parser.add_argument("--out_glb", required=True)
     parser.add_argument("--apply_root_motion", type=int, default=1)
+    parser.add_argument("--root_correction_deg", type=str, default="90,0,0")
 
     argv = []
     if "--" in sys.argv:
@@ -239,6 +270,10 @@ def main():
     root_quats = np.load(args.root_quats_npy)
     root_pos = np.load(args.root_pos_npy)
 
+    root_correction_deg = [float(v.strip()) for v in args.root_correction_deg.split(",")]
+    if len(root_correction_deg) != 3:
+        raise RuntimeError("root_correction_deg must be 3 comma-separated values, e.g. 90,0,0")
+
     joint_names, name_to_pos, parents, children, _root_name, skinning = parse_rig_txt(args.rig_txt)
     mesh_obj = import_mesh_obj(args.mesh_obj)
     arm_obj = build_armature(joint_names, name_to_pos, parents, children)
@@ -253,6 +288,7 @@ def main():
         root_pos=root_pos,
         apply_root_motion=bool(args.apply_root_motion),
         root_pos_scale=root_scale,
+        root_correction_deg=root_correction_deg,
     )
     export_glb(args.out_glb)
     print(f"GLB exported: {args.out_glb}")
