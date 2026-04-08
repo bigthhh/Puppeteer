@@ -158,6 +158,16 @@ def quat_multiply_wxyz(q1, q2):
     )
 
 
+def quat_conjugate_wxyz(q):
+    return np.array([q[0], -q[1], -q[2], -q[3]], dtype=np.float32)
+
+
+def quat_rotate_vec3_wxyz(q, v):
+    vq = np.array([0.0, float(v[0]), float(v[1]), float(v[2])], dtype=np.float32)
+    rq = quat_multiply_wxyz(quat_multiply_wxyz(q, vq), quat_conjugate_wxyz(q))
+    return np.array([rq[1], rq[2], rq[3]], dtype=np.float32)
+
+
 def euler_deg_xyz_to_quat_wxyz(euler_deg_xyz):
     ex, ey, ez = [np.deg2rad(float(v)) for v in euler_deg_xyz]
     cx, sx = np.cos(ex * 0.5), np.sin(ex * 0.5)
@@ -224,7 +234,10 @@ def apply_animation(
         if apply_root_motion:
             rq = root_quats[t]
             rq = quat_multiply_wxyz(q_corr, rq)
-            rp = root_pos[t] * root_pos_scale
+            # Translation and rotation are defined in the same source frame.
+            # In Blender world mapping we apply inverse correction for position
+            # to keep trajectory aligned with the corrected facing direction.
+            rp = quat_rotate_vec3_wxyz(quat_conjugate_wxyz(q_corr), root_pos[t]) * root_pos_scale
             arm_obj.rotation_quaternion = (float(rq[0]), float(rq[1]), float(rq[2]), float(rq[3]))
             arm_obj.location = (float(rp[0]), float(rp[1]), float(rp[2]))
             arm_obj.keyframe_insert(data_path="rotation_quaternion", frame=frame)
