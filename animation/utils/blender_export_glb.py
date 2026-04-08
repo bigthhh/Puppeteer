@@ -192,12 +192,14 @@ def compute_mesh_scale(mesh_obj):
 def apply_animation(
     arm_obj,
     joint_names,
+    root_joint_name,
     local_quats,
     root_quats,
     root_pos,
     apply_root_motion,
     root_pos_scale,
     root_correction_deg,
+    root_bone_correction_deg,
 ):
     T, J, C = local_quats.shape
     if C != 4:
@@ -217,6 +219,7 @@ def apply_animation(
     arm_obj.rotation_mode = "QUATERNION"
 
     q_corr = euler_deg_xyz_to_quat_wxyz(root_correction_deg)
+    q_root_bone_corr = euler_deg_xyz_to_quat_wxyz(root_bone_correction_deg)
 
     for t in range(T):
         frame = t + 1
@@ -228,6 +231,8 @@ def apply_animation(
             if pb is None:
                 continue
             q = local_quats[t, j]
+            if name == root_joint_name:
+                q = quat_multiply_wxyz(q_root_bone_corr, q)
             pb.rotation_quaternion = (float(q[0]), float(q[1]), float(q[2]), float(q[3]))
             pb.keyframe_insert(data_path="rotation_quaternion", frame=frame)
 
@@ -268,6 +273,7 @@ def parse_args():
     parser.add_argument("--out_glb", required=True)
     parser.add_argument("--apply_root_motion", type=int, default=1)
     parser.add_argument("--root_correction_deg", type=str, default="90,0,0")
+    parser.add_argument("--root_bone_correction_deg", type=str, default="0,0,0")
 
     argv = []
     if "--" in sys.argv:
@@ -286,8 +292,11 @@ def main():
     root_correction_deg = [float(v.strip()) for v in args.root_correction_deg.split(",")]
     if len(root_correction_deg) != 3:
         raise RuntimeError("root_correction_deg must be 3 comma-separated values, e.g. 90,0,0")
+    root_bone_correction_deg = [float(v.strip()) for v in args.root_bone_correction_deg.split(",")]
+    if len(root_bone_correction_deg) != 3:
+        raise RuntimeError("root_bone_correction_deg must be 3 comma-separated values, e.g. -90,0,0")
 
-    joint_names, name_to_pos, parents, children, _root_name, skinning = parse_rig_txt(args.rig_txt)
+    joint_names, name_to_pos, parents, children, root_name, skinning = parse_rig_txt(args.rig_txt)
     mesh_obj = import_mesh_obj(args.mesh_obj)
     arm_obj = build_armature(joint_names, name_to_pos, parents, children)
     bind_weights(mesh_obj, arm_obj, joint_names, skinning)
@@ -296,12 +305,14 @@ def main():
     apply_animation(
         arm_obj=arm_obj,
         joint_names=joint_names,
+        root_joint_name=root_name,
         local_quats=local_quats,
         root_quats=root_quats,
         root_pos=root_pos,
         apply_root_motion=bool(args.apply_root_motion),
         root_pos_scale=root_scale,
         root_correction_deg=root_correction_deg,
+        root_bone_correction_deg=root_bone_correction_deg,
     )
     export_glb(args.out_glb)
     print(f"GLB exported: {args.out_glb}")
