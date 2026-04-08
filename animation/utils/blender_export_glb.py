@@ -4,6 +4,7 @@ import sys
 from collections import defaultdict
 
 import bpy
+import mathutils
 import numpy as np
 
 
@@ -74,10 +75,15 @@ def import_mesh_obj(mesh_path):
     if len(imported_meshes) > 1:
         bpy.ops.object.join()
     mesh_obj = bpy.context.view_layer.objects.active
-    return mesh_obj
+
+    # Capture the import transform (Y-up to Z-up rotation applied by Blender)
+    # so we can align the armature bones to the same coordinate space.
+    import_matrix = mesh_obj.matrix_world.copy()
+
+    return mesh_obj, import_matrix
 
 
-def build_armature(joint_names, name_to_pos, parents, children):
+def build_armature(joint_names, name_to_pos, parents, children, import_matrix=None):
     bpy.ops.object.armature_add(enter_editmode=True, location=(0.0, 0.0, 0.0))
     arm_obj = bpy.context.object
     arm_obj.name = "RigArmature"
@@ -88,15 +94,26 @@ def build_armature(joint_names, name_to_pos, parents, children):
     if arm_data.edit_bones:
         arm_data.edit_bones.remove(arm_data.edit_bones[0])
 
+    # Transform rig positions into the mesh's imported coordinate space.
+    # Blender's OBJ importer applies a Y-up → Z-up rotation to the mesh;
+    # the same rotation must be applied to bone positions so they overlap.
+    if import_matrix is not None:
+        transformed_pos = {}
+        for name, pos in name_to_pos.items():
+            v = import_matrix @ mathutils.Vector((float(pos[0]), float(pos[1]), float(pos[2])))
+            transformed_pos[name] = np.array([v.x, v.y, v.z], dtype=np.float32)
+    else:
+        transformed_pos = name_to_pos
+
     # A small scale-aware tail offset for leaf bones.
-    all_pos = np.stack([name_to_pos[n] for n in joint_names], axis=0)
+    all_pos = np.stack([transformed_pos[n] for n in joint_names], axis=0)
     bbox = all_pos.max(axis=0) - all_pos.min(axis=0)
     tail_eps = max(float(np.max(bbox)) * 0.02, 1e-4)
 
     created = {}
     for name in joint_names:
         bone = arm_data.edit_bones.new(name)
-        head = name_to_pos[name]
+        head = transformed_pos[name]
         # IMPORTANT:
         # The optimization code defines local rotations in a canonical joint frame
         # (without per-bone rest-axis alignment to child direction). If we orient
@@ -297,8 +314,8 @@ def main():
         raise RuntimeError("root_bone_correction_deg must be 3 comma-separated values, e.g. -90,0,0")
 
     joint_names, name_to_pos, parents, children, root_name, skinning = parse_rig_txt(args.rig_txt)
-    mesh_obj = import_mesh_obj(args.mesh_obj)
-    arm_obj = build_armature(joint_names, name_to_pos, parents, children)
+    mesh_obj, import_matrix = import_mesh_obj(args.mesh_obj)
+    arm_obj = build_armature(joint_names, name_to_pos, parents, children, import_matrix)
     bind_weights(mesh_obj, arm_obj, joint_names, skinning)
 
     root_scale = compute_mesh_scale(mesh_obj)
