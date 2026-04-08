@@ -108,13 +108,42 @@ bash demo_animation.sh
 
 The rendered 3D animation sequence from different views will be saved in `results/animation`. Refer to the [animation folder](https://github.com/ByteDance-Seed/Puppeteer/tree/main/animation) for comprehensive details on data processing and structure.
 
-If optical flow has been precomputed (for example, generated in a separate environment), you can skip frame extraction/flow generation and run optimization only:
+### Optical flow generation
+
+If optical flow needs to be generated in a separate environment (e.g., due to dependency conflicts), prepare the frames and run:
 
 ```
-bash run_animation_optimization_only.sh
+cd animation
+python utils/save_flow.py --input_path ../examples --seq_name <seq_name>
 ```
 
-The script checks `examples/spiderman/flow/*.flo` and `examples/deer/flow/*.flo` before running optimization.
+This reads frames from `examples/<seq_name>/imgs/` and saves `.flo` files to `examples/<seq_name>/flow/`.
+
+### Run optimization only
+
+If optical flow has been precomputed, you can skip frame extraction/flow generation and run optimization only:
+
+```
+bash run_animation_optimization_only.sh <seq_name> [save_name] [extra_args...]
+```
+
+Without arguments, the script runs the default spiderman + deer demos.
+
+### Export to GLB
+
+After optimization, export the animated model to GLB (requires Blender):
+
+```
+bash export_animation_glb.sh <seq_name> <save_name> <output_glb_path>
+```
+
+Example:
+
+```
+bash export_animation_glb.sh deer deer_demo results/animation/deer/deer_demo/deer.glb
+```
+
+Set `BLENDER_BIN` in `.env` or ensure `blender` is in PATH.
 
 
 ## 😊 Acknowledgment
