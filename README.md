@@ -108,6 +108,14 @@ bash demo_animation.sh
 
 The rendered 3D animation sequence from different views will be saved in `results/animation`. Refer to the [animation folder](https://github.com/ByteDance-Seed/Puppeteer/tree/main/animation) for comprehensive details on data processing and structure.
 
+If optical flow has been precomputed (for example, generated in a separate environment), you can skip frame extraction/flow generation and run optimization only:
+
+```
+bash run_animation_optimization_only.sh
+```
+
+The script checks `examples/spiderman/flow/*.flo` and `examples/deer/flow/*.flo` before running optimization.
+
 
 ## 😊 Acknowledgment
 
