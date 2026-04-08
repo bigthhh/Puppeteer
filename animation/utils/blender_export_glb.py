@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 from collections import defaultdict
 
 import bpy
@@ -224,8 +225,8 @@ def parse_args():
     parser.add_argument("--apply_root_motion", type=int, default=1)
 
     argv = []
-    if "--" in bpy.sys.argv:
-        argv = bpy.sys.argv[bpy.sys.argv.index("--") + 1 :]
+    if "--" in sys.argv:
+        argv = sys.argv[sys.argv.index("--") + 1 :]
     return parser.parse_args(argv)
 
 

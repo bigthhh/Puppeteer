@@ -70,7 +70,7 @@ PY
 
 mkdir -p "$(dirname "$OUT_GLB")"
 
-"$BLENDER_EXEC" --background --python "$SCRIPT_DIR/animation/utils/blender_export_glb.py" -- \
+"$BLENDER_EXEC" --background --python-exit-code 1 --python "$SCRIPT_DIR/animation/utils/blender_export_glb.py" -- \
   --mesh_obj "$MESH_OBJ" \
   --rig_txt "$RIG_TXT" \
   --local_quats_npy "$TMP_DIR/local_quats.npy" \
@@ -78,5 +78,10 @@ mkdir -p "$(dirname "$OUT_GLB")"
   --root_pos_npy "$TMP_DIR/root_pos.npy" \
   --out_glb "$OUT_GLB" \
   --apply_root_motion "$APPLY_ROOT_MOTION"
+
+if [ ! -f "$OUT_GLB" ]; then
+  echo "GLB export failed: output file not found: $OUT_GLB"
+  exit 1
+fi
 
 echo "Exported GLB: $OUT_GLB"
