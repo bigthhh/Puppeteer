@@ -6,6 +6,8 @@ cd "$SCRIPT_DIR"
 
 export PYTHONPATH="$SCRIPT_DIR/animation:${PYTHONPATH:-}"
 
+SEQ_NAME="${1:-}"
+SAVE_NAME="${2:-${SEQ_NAME:+${SEQ_NAME}_demo}}"
 ITER="${ITER:-200}"
 IMG_SIZE="${IMG_SIZE:-960}"
 INPUT_PATH="${INPUT_PATH:-$SCRIPT_DIR/examples}"
@@ -44,14 +46,20 @@ mkdir -p "$SAVE_PATH"
 
 cd "$SCRIPT_DIR/animation"
 
-check_flow_ready "spiderman"
-check_flow_ready "deer"
-
-echo "Running optimization only (skip frame extraction / flow generation)..."
-run_optimization "spiderman" "spiderman_demo"
-run_optimization "deer" "deer_demo" \
-  --smooth_weight 1 \
-  --main_renderer front_left \
-  --additional_renderers "right,front_right,back_right"
+if [ -n "$SEQ_NAME" ]; then
+  check_flow_ready "$SEQ_NAME"
+  echo "Running optimization for: $SEQ_NAME (save_name: $SAVE_NAME)..."
+  shift 2 2>/dev/null || true
+  run_optimization "$SEQ_NAME" "$SAVE_NAME" "$@"
+else
+  check_flow_ready "spiderman"
+  check_flow_ready "deer"
+  echo "Running optimization only (skip frame extraction / flow generation)..."
+  run_optimization "spiderman" "spiderman_demo"
+  run_optimization "deer" "deer_demo" \
+    --smooth_weight 1 \
+    --main_renderer front_left \
+    --additional_renderers "right,front_right,back_right"
+fi
 
 echo "Optimization finished. Results saved to: $SAVE_PATH"
